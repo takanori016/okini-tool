@@ -28,13 +28,15 @@
     log.appendChild(d); box.scrollTop = box.scrollHeight; return d;
   }
 
-  function waitFor(doc, sel, cb) {
+  /* iframe.contentDocument を毎回取り直してセレクタの出現を待つ（リダイレクト耐性） */
+  function pollDoc(ifr, sel, maxTries, cb) {
     var n = 0;
     var iv = setInterval(function () {
       n++;
-      var f = null;
-      try { f = doc.querySelector(sel); } catch (e) {}
-      if (f || n >= 32) { clearInterval(iv); cb(f, n); }
+      var d = null, el = null;
+      try { d = ifr.contentDocument; } catch (e) {}
+      if (d) { try { el = d.querySelector(sel); } catch (e) {} }
+      if (el || n >= maxTries) { clearInterval(iv); cb(el, d, n); }
     }, 500);
   }
 
@@ -73,83 +75,78 @@
   }
 
   line('送信先 mid=' + mid);
-  line('トーク画面を読み込み中...');
+  line('トーク画面を読み込み中...（最大24秒待機）');
 
   var ifr = document.createElement('iframe');
   ifr.style.cssText = 'width:1px;height:1px;opacity:0;position:absolute;left:-9999px';
   var url = ORIGIN + '/okinitalk/talk?mid=' + encodeURIComponent(mid) + '&gid=' + gid;
-  var handled = false;
-
-  ifr.onload = function () {
-    if (handled) return;
-    handled = true;
-    line('読み込み完了。入力欄の出現を待機中...');
-    var d, w;
-    try { d = ifr.contentDocument; w = ifr.contentWindow; } catch (e) {}
-    if (!d) { line('iframeのDOMにアクセス不可', false); return; }
-
-    waitFor(d, 'textarea#te_box', function (ta) {
-      if (!ta) { line('入力欄 textarea#te_box が出現しませんでした', false); return; }
-      line('入力欄を確認', true);
-
-      var blk = d.querySelector('div.talk_block.tbactive');
-      if (blk) { line('この相手はブロック中のため送信を中止しました', false); return; }
-      line('ブロックなし', true);
-
-      try {
-        ta.focus();
-        ta.value = msg;
-        var EV = w.Event || Event;
-        var KE = w.KeyboardEvent || KeyboardEvent;
-        ['focus', 'input', 'change'].forEach(function (t) {
-          ta.dispatchEvent(new EV(t, { bubbles: true }));
-        });
-        ['keydown', 'keypress', 'keyup'].forEach(function (t) {
-          ta.dispatchEvent(new KE(t, { key: 'a', bubbles: true }));
-        });
-        if (w.$) { try { w.$(ta).trigger('input').trigger('change').trigger('keyup'); } catch (e) {} }
-        line('本文を入力しイベント発火', true);
-      } catch (e) {
-        line('入力処理で例外: ' + e.name, false);
-        return;
-      }
-
-      line('1.5秒後に送信ボタンを押します...');
-      setTimeout(function () {
-        var btn = d.querySelector('input.te_submit');
-        if (!btn) { line('送信ボタン input.te_submit が見つかりません', false); return; }
-        try {
-          if (btn.style.display === 'none') btn.style.display = '';
-          btn.click();
-          if (w.$) { try { w.$(btn).trigger('click'); } catch (e) {} }
-          line('送信ボタンをクリックしました', true);
-        } catch (e) {
-          line('送信クリックで例外: ' + e.name, false);
-          return;
-        }
-
-        setTimeout(function () {
-          var d2;
-          try { d2 = ifr.contentDocument; } catch (e) {}
-          var sent = false, detail = '';
-          if (d2) {
-            var ta2 = d2.querySelector('textarea#te_box');
-            var emptied = ta2 && ta2.value.trim() === '';
-            var bodyTxt = '';
-            try { bodyTxt = d2.body ? d2.body.innerText : ''; } catch (e) {}
-            var appears = bodyTxt.indexOf(msg) !== -1;
-            if (emptied) { sent = true; detail += '入力欄クリア '; }
-            if (appears) { sent = true; detail += '本文が会話に出現 '; }
-          }
-          line('送信結果判定: ' + (sent ? '成功の可能性大 (' + detail + ')' : '不明（手動で相手側の受信を確認してください）'), sent ? true : null);
-          line('—— テスト完了 ——');
-          line('CSP違反: ' + (cspHit ? 'あり' : 'なし'), !cspHit);
-          line('相手アカウントで実際に届いているか必ず目視確認してください');
-        }, 3500);
-      }, 1500);
-    });
-  };
+  var sentOnce = false;
 
   document.body.appendChild(ifr);
   ifr.src = url;
+
+  /* onloadに頼らず、ライブのDOMを継続ポーリング（48回×0.5秒=24秒） */
+  pollDoc(ifr, 'textarea#te_box', 48, function (ta, d) {
+    if (!ta || !d) { line('入力欄 textarea#te_box が出現しませんでした（24秒）', false); return; }
+    line('入力欄を確認', true);
+
+    var w = null;
+    try { w = ifr.contentWindow; } catch (e) {}
+
+    if (d.querySelector('div.talk_block.tbactive')) {
+      line('この相手はブロック中のため送信を中止しました', false); return;
+    }
+    line('ブロックなし', true);
+
+    if (sentOnce) return;
+    sentOnce = true;
+
+    try {
+      ta.focus();
+      ta.value = msg;
+      var EV = (w && w.Event) || Event;
+      var KE = (w && w.KeyboardEvent) || KeyboardEvent;
+      ['focus', 'input', 'change'].forEach(function (t) { ta.dispatchEvent(new EV(t, { bubbles: true })); });
+      ['keydown', 'keypress', 'keyup'].forEach(function (t) { ta.dispatchEvent(new KE(t, { key: 'a', bubbles: true })); });
+      if (w && w.$) { try { w.$(ta).trigger('input').trigger('change').trigger('keyup'); } catch (e) {} }
+      line('本文を入力しイベント発火', true);
+    } catch (e) { line('入力処理で例外: ' + e.name, false); return; }
+
+    line('1.5秒後に送信ボタンを押します...');
+    setTimeout(function () {
+      var d2 = null;
+      try { d2 = ifr.contentDocument; } catch (e) {}
+      var btn = d2 && d2.querySelector('input.te_submit');
+      if (!btn) { line('送信ボタン input.te_submit が見つかりません', false); return; }
+      try {
+        if (btn.style.display === 'none') btn.style.display = '';
+        btn.click();
+        if (w && w.$) { try { w.$(btn).trigger('click'); } catch (e) {} }
+        line('送信ボタンをクリックしました', true);
+      } catch (e) { line('送信クリックで例外: ' + e.name, false); return; }
+
+      line('送信結果を確認中...');
+      var checks = 0;
+      var civ = setInterval(function () {
+        checks++;
+        var d3 = null;
+        try { d3 = ifr.contentDocument; } catch (e) {}
+        var sent = false, detail = '';
+        if (d3) {
+          var ta3 = d3.querySelector('textarea#te_box');
+          if (ta3 && ta3.value.trim() === '') { sent = true; detail += '入力欄クリア '; }
+          var bodyTxt = '';
+          try { bodyTxt = d3.body ? d3.body.innerText : ''; } catch (e) {}
+          if (bodyTxt.indexOf(msg) !== -1) { sent = true; detail += '本文が会話に出現 '; }
+        }
+        if (sent || checks >= 12) {
+          clearInterval(civ);
+          line('送信結果判定: ' + (sent ? '成功の可能性大 (' + detail + ')' : '不明（相手側の受信を手動確認してください）'), sent ? true : null);
+          line('—— テスト完了 ——');
+          line('CSP違反: ' + (cspHit ? 'あり' : 'なし'), !cspHit);
+          line('相手アカウントで実際に届いているか必ず目視確認してください');
+        }
+      }, 500);
+    }, 1500);
+  });
 })();
