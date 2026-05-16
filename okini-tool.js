@@ -85,6 +85,8 @@
       '<label style="font-weight:700">メッセージ</label>' +
       '<textarea id="ok-msg" maxlength="500" rows="4" placeholder="送信するメッセージを入力" style="width:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font:13px sans-serif"></textarea>' +
       '<div style="text-align:right;font-size:11px;color:#6b7280"><span id="ok-cc">0</span>/500</div>' +
+      '<div style="margin:6px 0 2px"><button id="ok-var-name" type="button" style="padding:7px 12px;border:1px solid #c7d2fe;background:#eef2ff;color:#4338ca;border-radius:999px;font-size:12px;font-weight:700">👤 お客様のお名前を入れる</button></div>' +
+      '<div style="font-size:11px;color:#6b7280;margin-bottom:6px">↑押すと文に <b>{名前}</b> が入ります。送信するときに、お客様ごとのお名前へ自動で変わります（例：「{名前}さん こんばんは」→「たろうさん こんばんは」）</div>' +
       '<div style="margin:10px 0;padding:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px">' +
         '<div style="font-weight:700;margin-bottom:6px">絞り込み</div>' +
         '<label style="display:block;margin:4px 0">送信対象 ' +
@@ -131,6 +133,18 @@
     var b = $('ok-body'); b.style.display = b.style.display === 'none' ? 'block' : 'none';
   };
   $('ok-msg').addEventListener('input', function (e) { $('ok-cc').textContent = e.target.value.length; });
+  function applyVars(t, u) { return String(t).replace(/\{名前\}/g, (u && u.name) || ''); }
+  $('ok-var-name').onclick = function () {
+    var ta = $('ok-msg');
+    var s = ta.selectionStart != null ? ta.selectionStart : ta.value.length;
+    var e = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+    var tok = '{名前}';
+    ta.value = ta.value.slice(0, s) + tok + ta.value.slice(e);
+    var pos = s + tok.length;
+    try { ta.setSelectionRange(pos, pos); } catch (err) {}
+    ta.focus();
+    $('ok-cc').textContent = ta.value.length;
+  };
   $('ok-clear').onclick = function () {
     if (!confirm('送信済み・スキップ・ログを全て削除します。よろしいですか？')) return;
     localStorage.removeItem(K_SENT); localStorage.removeItem(K_SKIP); localStorage.removeItem(K_LOGS);
@@ -331,11 +345,13 @@
   }
 
   $('ok-send').onclick = async function () {
-    var msg = $('ok-msg').value.trim();
-    if (!msg) { alert('メッセージを入力してください'); return; }
+    var template = $('ok-msg').value.trim();
+    if (!template) { alert('メッセージを入力してください'); return; }
     var targets = selectedTargets();
     if (!targets.length) return;
-    if (!confirm(targets.length + '人に送信します。よろしいですか？\n（途中で止めても再実行で続きから送れます）')) return;
+    var ex = targets[0] ? (targets[0].name || 'お客様') : 'お客様';
+    var preview = applyVars(template, targets[0] || {});
+    if (!confirm(targets.length + '人に送信します。\n\n【' + ex + ' さんへの送信例】\n' + preview + '\n\nよろしいですか？\n（途中で止めても、もう一度実行すれば続きから送れます）')) return;
 
     var excluded = allTargets.filter(function (u) { return unchecked[u.memberId]; }).map(function (u) { return u.memberId; });
     if (excluded.length) setSkipped(excluded);
@@ -355,7 +371,7 @@
       $('ok-bar').style.width = ((i + 1) / targets.length * 100) + '%';
       $('ok-pn').textContent = '送信中: ' + u.name;
       var st = 'fail';
-      try { st = await sendOne(u, msg); } catch (e) { st = 'fail'; }
+      try { st = await sendOne(u, applyVars(template, u)); } catch (e) { st = 'fail'; }
       if (st === 'success' || st === 'unknown') { markSent(u.memberId); refreshSentN(); }
       if (st === 'success') ok++;
       else if (st === 'blocked') blocked++;
@@ -377,7 +393,7 @@
     addLog({
       timestamp: new Date().toISOString(), successCount: ok, unknownCount: unknown,
       blockedCount: blocked, failCount: fail, manualExclude: excluded.length,
-      total: targets.length, message: msg.slice(0, 50) + (msg.length > 50 ? '...' : ''), details: details
+      total: targets.length, message: template.slice(0, 50) + (template.length > 50 ? '...' : ''), details: details
     });
   };
 })();
