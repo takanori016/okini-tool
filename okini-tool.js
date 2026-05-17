@@ -108,7 +108,8 @@
         '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-rep"> リピーター除外（予約 <select id="ok-repn" style="padding:3px"><option>1</option><option>2</option><option selected>3</option><option>5</option></select>回以上）</label>' +
         '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-rec"> 最近やり取りした人を除外（<select id="ok-recd" style="padding:3px"><option>1</option><option selected>3</option><option>7</option><option>14</option><option>30</option></select>日以内）</label>' +
         '<label style="display:block;margin:6px 0;color:#9ca3af"><input type="checkbox" checked disabled> 未読がある人はスキップ（必須）</label>' +
-        '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-fresh"> 新規送信（送信済み履歴をリセット）</label>' +
+        '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-fresh"> 🔄 最初から送り直す（前に送った人にもまた送る）</label>' +
+        '<div style="font-size:11px;color:#6b7280;margin:-2px 0 4px">通常はチェック不要。前回の続きから送れます（送信済みの人は自動で除外）。全員にもう一度送りたい時だけチェック。</div>' +
       '</div>' +
       '<button id="ok-fetch" style="width:100%;padding:12px;font-weight:700;color:#fff;background:#6c5ce7;border:0;border-radius:8px">対象者を取得</button>' +
       '<div id="ok-sum" style="display:none;margin:10px 0;padding:8px;background:#eef2ff;border-radius:8px;font-size:12px"></div>' +
@@ -178,13 +179,23 @@
   $('ok-tpl-save').onclick = function () {
     var body = $('ok-msg').value.trim();
     if (!body) { alert('メッセージを入力してから保存してください'); return; }
+    var tpls = getTpls();
+    var curId = $('ok-tpl').value;
+    var cur = curId ? tpls.filter(function (x) { return x.id === curId; })[0] : null;
+    if (cur && confirm('選択中のテンプレート「' + cur.name + '」を上書き保存しますか？\n\nOK＝上書き　/　キャンセル＝新しい名前で保存')) {
+      cur.body = body; setTpls(tpls); renderTplOptions(); $('ok-tpl').value = cur.id;
+      alert('「' + cur.name + '」を上書き保存しました'); return;
+    }
     var name = prompt('テンプレート名を入力してください（例：出勤告知）');
     if (name == null) return;
     name = name.trim(); if (!name) return;
-    var tpls = getTpls();
+    var dup = tpls.filter(function (x) { return x.name === name; })[0];
+    if (dup && confirm('同じ名前「' + name + '」のテンプレートがあります。上書きしますか？\n\nOK＝上書き　/　キャンセル＝別物として追加')) {
+      dup.body = body; setTpls(tpls); renderTplOptions(); $('ok-tpl').value = dup.id;
+      alert('「' + name + '」を上書き保存しました'); return;
+    }
     tpls.push({ id: String(Date.now()), name: name, body: body });
-    setTpls(tpls); renderTplOptions();
-    var sel = $('ok-tpl'); sel.value = tpls[tpls.length - 1].id;
+    setTpls(tpls); renderTplOptions(); $('ok-tpl').value = tpls[tpls.length - 1].id;
     alert('「' + name + '」を保存しました');
   };
   $('ok-tpl-del').onclick = function () {
@@ -257,7 +268,12 @@
     ageSel = {};
     keys.forEach(function (k) { ageSel[k] = true; });
     var box = $('ok-agef');
-    if (keys.length <= 1) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    if (keys.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    if (keys.length === 1) {
+      box.style.display = 'flex';
+      box.innerHTML = '<span style="width:100%;color:#6b7280">検出された年代: <b>' + esc(keys[0]) + '</b>（1種類のみ・絞り込み不要）</span>';
+      return;
+    }
     box.style.display = 'flex';
     box.innerHTML = '<span style="width:100%;color:#6b7280">年代でしぼる（チェックを外すと除外）</span>' +
       keys.map(function (k) {
@@ -372,6 +388,10 @@
       $('ok-listwrap').style.display = 'block';
       $('ok-send').style.display = 'block';
       $('ok-send').disabled = allTargets.length === 0;
+
+      if (allTargets.length === 0 && acc.ss > 0 && !$('ok-fresh').checked) {
+        alert('送信対象が0人です。\n\n前回までに送信済みの ' + acc.ss + ' 人が自動で除外されています（途中から続けられる仕組みのためです）。\n\n同じ人にもう一度送りたい場合は、絞り込みの中の「🔄 最初から送り直す」にチェックを入れて、もう一度「対象者を取得」を押してください。');
+      }
     } catch (e) {
       alert('取得エラー: ' + (e && e.message));
     } finally {
