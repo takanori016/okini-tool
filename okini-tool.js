@@ -7,6 +7,7 @@
   var K_SENT = 'okini-sent-users';
   var K_SKIP = 'okini-skipped-users';
   var K_LOGS = 'okini-send-logs';
+  var K_TPL = 'okini-templates';
   var LOG_MAX = 200;
 
   /* ---------- localStorage ---------- */
@@ -18,6 +19,8 @@
   function markSent(id) { var s = getSent(); s[id] = new Date().toISOString(); lsSet(K_SENT, s); }
   function getSkipped() { return lsGet(K_SKIP, {}); }
   function setSkipped(ids) { var s = getSkipped(); ids.forEach(function (id) { s[id] = new Date().toISOString(); }); lsSet(K_SKIP, s); }
+  function getTpls() { return lsGet(K_TPL, []); }
+  function setTpls(v) { lsSet(K_TPL, v); }
   function addLog(entry) {
     var logs = lsGet(K_LOGS, []);
     logs.unshift(entry);
@@ -82,6 +85,12 @@
       '<button id="ok-x" style="border:0;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 9px;font-size:14px">×</button></span></div>' +
     '<div id="ok-body" style="padding:12px">' +
       '<div id="ok-gid" style="font-size:11px;color:#6b7280;margin-bottom:8px"></div>' +
+      '<label style="font-weight:700">テンプレート</label>' +
+      '<div style="display:flex;gap:6px;margin:6px 0">' +
+        '<select id="ok-tpl" style="flex:1;min-width:0;padding:6px;border:1px solid #e5e7eb;border-radius:6px"></select>' +
+        '<button id="ok-tpl-save" type="button" style="padding:6px 10px;border:1px solid #c7d2fe;background:#eef2ff;color:#4338ca;border-radius:6px;font-size:12px;white-space:nowrap">保存</button>' +
+        '<button id="ok-tpl-del" type="button" style="padding:6px 10px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:6px;font-size:12px;white-space:nowrap">削除</button>' +
+      '</div>' +
       '<label style="font-weight:700">メッセージ</label>' +
       '<textarea id="ok-msg" maxlength="500" rows="4" placeholder="送信するメッセージを入力" style="width:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font:13px sans-serif"></textarea>' +
       '<div style="text-align:right;font-size:11px;color:#6b7280"><span id="ok-cc">0</span>/500</div>' +
@@ -94,7 +103,8 @@
           '<option value="all">全員</option><option value="pin-only">ピン留めのみ</option><option value="pin-exclude">ピン留め以外</option></select></label>' +
         '<label style="display:block;margin:6px 0">取得人数 ' +
           '<select id="ok-limit" style="width:100%;padding:6px;border:1px solid #e5e7eb;border-radius:6px">' +
-          '<option value="30">30人</option><option value="50" selected>50人</option><option value="100">100人</option><option value="0">制限なし</option></select></label>' +
+          '<option value="30">30人</option><option value="50" selected>50人</option><option value="100">100人</option><option value="0">制限なし</option><option value="custom">カスタム</option></select></label>' +
+        '<div id="ok-limit-cw" style="display:none;margin:2px 0 6px"><input id="ok-limit-cv" type="number" min="1" max="9999" placeholder="人数" style="width:110px;padding:6px;border:1px solid #e5e7eb;border-radius:6px"> 人</div>' +
         '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-rep"> リピーター除外（予約 <select id="ok-repn" style="padding:3px"><option>1</option><option>2</option><option selected>3</option><option>5</option></select>回以上）</label>' +
         '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-rec"> 最近やり取りした人を除外（<select id="ok-recd" style="padding:3px"><option>1</option><option selected>3</option><option>7</option><option>14</option><option>30</option></select>日以内）</label>' +
         '<label style="display:block;margin:6px 0;color:#9ca3af"><input type="checkbox" checked disabled> 未読がある人はスキップ（必須）</label>' +
@@ -103,6 +113,7 @@
       '<button id="ok-fetch" style="width:100%;padding:12px;font-weight:700;color:#fff;background:#6c5ce7;border:0;border-radius:8px">対象者を取得</button>' +
       '<div id="ok-sum" style="display:none;margin:10px 0;padding:8px;background:#eef2ff;border-radius:8px;font-size:12px"></div>' +
       '<div id="ok-listwrap" style="display:none;margin:10px 0">' +
+        '<div id="ok-agef" style="display:none;flex-wrap:wrap;gap:4px 10px;margin-bottom:8px;padding:8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:12px"></div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
           '<label><input type="checkbox" id="ok-all" checked> 全選択</label><span id="ok-selc" style="font-size:12px;color:#6b7280"></span></div>' +
         '<input id="ok-search" placeholder="名前で検索" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px">' +
@@ -116,6 +127,8 @@
         '<button id="ok-stop" style="padding:6px 12px;border:0;background:#ef4444;color:#fff;border-radius:6px">中止</button></div>' +
       '</div>' +
       '<div id="ok-res" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #10b981;border-radius:8px;font-size:12px"></div>' +
+      '<div style="margin-top:12px"><button id="ok-loghist" type="button" style="width:100%;padding:9px;border:1px solid #e5e7eb;background:#fff;border-radius:8px;font-size:12px">送信履歴を見る</button></div>' +
+      '<div id="ok-loglist" style="display:none;margin-top:8px;border:1px solid #e5e7eb;border-radius:8px;max-height:42vh;overflow:auto"></div>' +
       '<div style="margin-top:12px;border-top:1px solid #eee;padding-top:8px;font-size:11px;color:#9ca3af">' +
         '送信済み記録: <span id="ok-sentn">0</span>件 ' +
         '<button id="ok-clear" style="border:0;background:#fee2e2;color:#b91c1c;border-radius:6px;padding:3px 8px;margin-left:6px">全データ削除</button></div>' +
@@ -146,20 +159,122 @@
     $('ok-cc').textContent = ta.value.length;
   };
   $('ok-clear').onclick = function () {
-    if (!confirm('送信済み・スキップ・ログを全て削除します。よろしいですか？')) return;
+    if (!confirm('送信済み・スキップ・ログを全て削除します。\n（テンプレートは残ります）よろしいですか？')) return;
     localStorage.removeItem(K_SENT); localStorage.removeItem(K_SKIP); localStorage.removeItem(K_LOGS);
-    refreshSentN(); alert('削除しました');
+    refreshSentN(); renderLogs(); alert('削除しました');
+  };
+
+  /* ---------- テンプレート ---------- */
+  function renderTplOptions() {
+    var tpls = getTpls();
+    $('ok-tpl').innerHTML = '<option value="">-- テンプレートを選択 --</option>' +
+      tpls.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>'; }).join('');
+  }
+  $('ok-tpl').addEventListener('change', function () {
+    var id = this.value; if (!id) return;
+    var t = getTpls().filter(function (x) { return x.id === id; })[0];
+    if (t) { $('ok-msg').value = t.body; $('ok-cc').textContent = t.body.length; }
+  });
+  $('ok-tpl-save').onclick = function () {
+    var body = $('ok-msg').value.trim();
+    if (!body) { alert('メッセージを入力してから保存してください'); return; }
+    var name = prompt('テンプレート名を入力してください（例：出勤告知）');
+    if (name == null) return;
+    name = name.trim(); if (!name) return;
+    var tpls = getTpls();
+    tpls.push({ id: String(Date.now()), name: name, body: body });
+    setTpls(tpls); renderTplOptions();
+    var sel = $('ok-tpl'); sel.value = tpls[tpls.length - 1].id;
+    alert('「' + name + '」を保存しました');
+  };
+  $('ok-tpl-del').onclick = function () {
+    var id = $('ok-tpl').value;
+    if (!id) { alert('削除するテンプレートを選択してください'); return; }
+    var t = getTpls().filter(function (x) { return x.id === id; })[0];
+    if (!t || !confirm('テンプレート「' + t.name + '」を削除しますか？')) return;
+    setTpls(getTpls().filter(function (x) { return x.id !== id; }));
+    renderTplOptions();
+  };
+  renderTplOptions();
+
+  /* ---------- カスタム取得人数 ---------- */
+  $('ok-limit').addEventListener('change', function () {
+    $('ok-limit-cw').style.display = this.value === 'custom' ? 'block' : 'none';
+  });
+
+  /* ---------- 送信履歴 ---------- */
+  function renderLogs() {
+    var box = $('ok-loglist');
+    if (!box) return;
+    var logs = lsGet(K_LOGS, []);
+    if (!logs.length) { box.innerHTML = '<div style="padding:10px;color:#9ca3af;font-size:12px">送信履歴はまだありません</div>'; return; }
+    box.innerHTML = logs.map(function (l, idx) {
+      var dt = new Date(l.timestamp).toLocaleString('ja-JP');
+      var head = '成功' + (l.successCount || 0) + ' / 不明' + (l.unknownCount || 0) + ' / ブロック' + (l.blockedCount || 0) + ' / 失敗' + (l.failCount || 0);
+      var det = (l.details || []).map(function (d) {
+        var lbl = d.status === 'success' ? '✓送信' : d.status === 'blocked' ? '⊘ブロック' : d.status === 'unknown' ? '?不明' : '✗失敗';
+        return '<div style="display:flex;justify-content:space-between;gap:6px;padding:3px 8px;font-size:11px;border-top:1px solid #f3f4f6">' +
+          '<span style="flex:1">' + esc(d.name) + '</span><span>' + lbl + '</span><span style="color:#9ca3af">' + esc(d.time || '') + '</span></div>';
+      }).join('');
+      return '<div style="border-bottom:1px solid #e5e7eb">' +
+        '<div class="ok-logitem" data-i="' + idx + '" style="padding:8px;font-size:12px">' +
+          '<div style="color:#6b7280">' + esc(dt) + '</div>' +
+          '<div>' + head + ' <span style="color:#6c5ce7">▼詳細</span></div>' +
+          '<div style="color:#9ca3af;font-size:11px">「' + esc(l.message || '') + '」</div>' +
+        '</div>' +
+        '<div class="ok-logdet" data-i="' + idx + '" style="display:none">' + det + '</div></div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.ok-logitem'), function (it) {
+      it.addEventListener('click', function () {
+        var det = box.querySelector('.ok-logdet[data-i="' + it.dataset.i + '"]');
+        if (det) det.style.display = det.style.display === 'none' ? 'block' : 'none';
+      });
+    });
+  }
+  $('ok-loghist').onclick = function () {
+    var b = $('ok-loglist');
+    if (b.style.display === 'none') { renderLogs(); b.style.display = 'block'; $('ok-loghist').textContent = '送信履歴を閉じる'; }
+    else { b.style.display = 'none'; $('ok-loghist').textContent = '送信履歴を見る'; }
   };
 
   /* ---------- 一覧取得 ---------- */
   var allTargets = [];
   var unchecked = {};
+  var ageSel = {};
   var sendState = { running: false, paused: false };
 
+  function ageKey(u) { return (u.ageRange && u.ageRange.trim()) ? u.ageRange.trim() : '未設定'; }
+  function passesAge(u) { return ageSel[ageKey(u)] !== false; }
+  function buildAgeFilter() {
+    var keys = [], seen = {};
+    allTargets.forEach(function (u) { var k = ageKey(u); if (!seen[k]) { seen[k] = 1; keys.push(k); } });
+    keys.sort(function (a, b) {
+      if (a === '未設定') return 1; if (b === '未設定') return -1;
+      var na = parseInt(a, 10), nb = parseInt(b, 10);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b, 'ja');
+    });
+    ageSel = {};
+    keys.forEach(function (k) { ageSel[k] = true; });
+    var box = $('ok-agef');
+    if (keys.length <= 1) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    box.style.display = 'flex';
+    box.innerHTML = '<span style="width:100%;color:#6b7280">年代でしぼる（チェックを外すと除外）</span>' +
+      keys.map(function (k) {
+        return '<label style="display:inline-flex;gap:3px;align-items:center"><input type="checkbox" class="ok-agecb" data-k="' + esc(k) + '" checked> ' + esc(k) + '</label>';
+      }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.ok-agecb'), function (cb) {
+      cb.addEventListener('change', function () { ageSel[cb.dataset.k] = cb.checked; renderList(); });
+    });
+  }
+
   function getOpts() {
+    var lv = $('ok-limit').value, limit;
+    if (lv === 'custom') limit = parseInt($('ok-limit-cv').value, 10) || 0;
+    else limit = parseInt(lv, 10) || 0;
     return {
       mode: $('ok-mode').value,
-      limit: parseInt($('ok-limit').value, 10) || 0,
+      limit: limit,
       rep: $('ok-rep').checked, repn: parseInt($('ok-repn').value, 10) || 1,
       rec: $('ok-rec').checked, recd: parseInt($('ok-recd').value, 10) || 3
     };
@@ -248,6 +363,7 @@
 
       allTargets = (opts.limit > 0) ? acc.targets.slice(0, opts.limit) : acc.targets;
       unchecked = {};
+      buildAgeFilter();
 
       $('ok-sum').style.display = 'block';
       $('ok-sum').innerHTML = '送信対象 <b>' + allTargets.length + '</b>人　/　除外: ' +
@@ -266,9 +382,13 @@
   /* ---------- 対象者一覧 ---------- */
   function visible() {
     var q = ($('ok-search').value || '').toLowerCase();
-    return allTargets.filter(function (u) { return !q || (u.name || '').toLowerCase().indexOf(q) !== -1; });
+    return allTargets.filter(function (u) {
+      return (!q || (u.name || '').toLowerCase().indexOf(q) !== -1) && passesAge(u);
+    });
   }
-  function selectedTargets() { return allTargets.filter(function (u) { return !unchecked[u.memberId]; }); }
+  function selectedTargets() {
+    return allTargets.filter(function (u) { return !unchecked[u.memberId] && passesAge(u); });
+  }
 
   function renderList() {
     var vis = visible();
@@ -395,5 +515,6 @@
       blockedCount: blocked, failCount: fail, manualExclude: excluded.length,
       total: targets.length, message: template.slice(0, 50) + (template.length > 50 ? '...' : ''), details: details
     });
+    if ($('ok-loglist').style.display !== 'none') renderLogs();
   };
 })();
