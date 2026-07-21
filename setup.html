@@ -21,6 +21,9 @@
   .hi{background:#fff4f8;border:1px solid #f4c9da;border-radius:8px;padding:10px;font-size:14px}
   b{color:#c2185b}
   .intro-card b{color:#0f172a}
+  details.fallback{margin:4px 0 20px}
+  details.fallback>summary{cursor:pointer;color:#475569;font-size:14px;text-align:center;padding:12px;list-style:none;text-decoration:underline}
+  details.fallback>summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
@@ -30,7 +33,7 @@
     <span class="tag intro">はじめに</span>
     <p>始める前に、2つだけ確認してください。</p>
     <ol>
-      <li><b>iOSを最新にしておく</b>（設定 → 一般 → ソフトウェアアップデート）</li>
+      <li><b>iOS 18.2以上</b>にしておく（できれば最新に。設定 → 一般 → ソフトウェアアップデート）</li>
       <li>このツールは <b>Safari</b> で使います（Chromeなど他のブラウザではなく、Safariで開いてください）</li>
     </ol>
   </div>
@@ -58,7 +61,7 @@
     <p>使うときはこれだけ。</p>
     <ol>
       <li>Safariで<b>姫デコにログイン</b> → オキニトーク一覧ページを開く</li>
-      <li>Safari右下の「<b>・・・</b>」メニューを開く → 中の <b>本のアイコン（ブックマーク）</b> をタップ</li>
+      <li><b>Safari右下</b>の「<b>・・・</b>」メニューを開く → 中の <b>本のアイコン（ブックマーク）</b> をタップ</li>
       <li>「<b>オキニトークツール</b>」をタップ → ツールが起動</li>
     </ol>
   </div>
@@ -67,5 +70,13 @@
     <p>姫デコを開く</p>
     <a class="btn btn2" href="https://spgirl.cityheaven.net/">姫デコへ移動</a>
   </div>
+
+  <details class="fallback">
+    <summary>うまくいかない／古いiPhone（iOS 18.1以下）の方はこちら</summary>
+    <div class="card" style="margin-top:10px">
+      <p>お使いのiPhoneが <b>iOS 18.1以下</b> だと、STEP2の「読み込む」が表示されず、この方法は使えません。その場合は、手動で登録する方法をご案内します。</p>
+      <a class="btn btn2" href="index.html">手動で登録する方法をひらく</a>
+    </div>
+  </details>
 </body>
 </html>
