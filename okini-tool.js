@@ -526,6 +526,9 @@
     }
 
     sendState.running = false;
+    /* 送信後にソフトキーボードが出っぱなしになるのを防ぐ（trで入力欄にfocusするため） */
+    try { var _a = ifr.contentDocument && ifr.contentDocument.activeElement; if (_a && _a.blur) _a.blur(); } catch (e) {}
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
     $('ok-prog').style.display = 'none';
     $('ok-fetch').disabled = false;
     $('ok-res').style.display = 'block';
