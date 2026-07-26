@@ -77,8 +77,10 @@
   /* ---------- UI ---------- */
   var gid = findGid();
   var panel = document.createElement('div');
+  panel.id = 'ok-panel';
   panel.style.cssText = 'position:fixed;top:6px;left:6px;right:6px;z-index:2147483647;background:#fff;border:2px solid #e84575;border-radius:12px;font:13px/1.55 -apple-system,sans-serif;color:#1a1a2e;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 8px 28px rgba(0,0,0,.35)';
   panel.innerHTML =
+    '<style>#ok-panel input[type=checkbox]{-webkit-appearance:none;appearance:none;width:20px;height:20px;min-width:20px;border:2px solid #e84575;border-radius:4px;background:#fff;position:relative;vertical-align:middle;margin:0 6px 0 0;flex:none;cursor:pointer}#ok-panel input[type=checkbox]:checked{background:#e84575}#ok-panel input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}#ok-panel input[type=checkbox]:disabled{border-color:#cbd5e1;background:#f1f5f9}#ok-panel input[type=checkbox]:disabled:checked{background:#cbd5e1}</style>' +
     '<div id="ok-h" style="position:sticky;top:0;background:#e84575;color:#fff;font-weight:700;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px 10px 0 0">' +
       '<span>オキニトーク 一斉送信</span>' +
       '<span><button id="ok-min" style="border:0;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 9px;margin-right:6px;font-size:14px">＿</button>' +
