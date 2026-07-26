@@ -77,7 +77,7 @@
   /* ---------- UI ---------- */
   var gid = findGid();
   var panel = document.createElement('div');
-  panel.style.cssText = 'position:fixed;top:6px;left:6px;right:6px;z-index:2147483647;background:#fff;border:2px solid #e84575;border-radius:12px;font:13px/1.55 -apple-system,sans-serif;color:#1a1a2e;max-height:88vh;overflow:auto;box-shadow:0 8px 28px rgba(0,0,0,.35)';
+  panel.style.cssText = 'position:fixed;top:6px;left:6px;right:6px;z-index:2147483647;background:#fff;border:2px solid #e84575;border-radius:12px;font:13px/1.55 -apple-system,sans-serif;color:#1a1a2e;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 8px 28px rgba(0,0,0,.35)';
   panel.innerHTML =
     '<div id="ok-h" style="position:sticky;top:0;background:#e84575;color:#fff;font-weight:700;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px 10px 0 0">' +
       '<span>オキニトーク 一斉送信</span>' +
