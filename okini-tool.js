@@ -499,6 +499,7 @@
     if (excluded.length) setSkipped(excluded);
 
     sendState = { running: true, paused: false };
+    try { if (window.OkiniApp && OkiniApp.setSending) OkiniApp.setSending(true); } catch (e) {}
     $('ok-send').style.display = 'none';
     $('ok-fetch').disabled = true;
     $('ok-prog').style.display = 'block';
@@ -527,6 +528,7 @@
 
     sendState.running = false;
     /* 送信後にソフトキーボードが出っぱなしになるのを防ぐ（trで入力欄にfocusするため） */
+    try { if (window.OkiniApp && OkiniApp.setSending) OkiniApp.setSending(false); } catch (e) {}
     try { var _a = ifr.contentDocument && ifr.contentDocument.activeElement; if (_a && _a.blur) _a.blur(); } catch (e) {}
     try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (e) {}
     $('ok-prog').style.display = 'none';
