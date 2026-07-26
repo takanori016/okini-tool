@@ -458,6 +458,7 @@
     var ta = d.querySelector('textarea#te_box');
     if (!ta) return 'fail';
     try {
+      try { ta.setAttribute('inputmode', 'none'); } catch (e2) {} /* 送信中にソフトキーボードを出さない */
       ta.focus();
       ta.value = msg;
       var EV = (w && w.Event) || Event, KE = (w && w.KeyboardEvent) || KeyboardEvent;
