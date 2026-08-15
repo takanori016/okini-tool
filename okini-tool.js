@@ -155,7 +155,7 @@
         '<div class="ok-tb"><button id="ok-var-name" type="button" class="ok-tb__b">👤 お客様のお名前を入れる</button></div>' +
         '<textarea id="ok-msg" class="ok-ta" maxlength="500" rows="5" placeholder="送信するメッセージを入力"></textarea>' +
         '<div class="ok-cnt"><span id="ok-cc">0</span>/500</div>' +
-        '<div class="ok-note">上のボタンを押すと文に <b>{名前}</b> が入ります。送信するときに、お客様ごとのお名前へ自動で変わります（例：「{名前}さん こんばんは」→「たろうさん こんばんは」）</div>' +
+        '<div class="ok-note">お名前を入れたいところをタップしてから「👤 お客様のお名前を入れる」を押すと <b>{名前}</b> が入ります。送るときに、お客様ごとのお名前へ自動で変わります。<br>例：「{名前}さん こんばんは」→「<b>たろうさん</b> こんばんは」</div>' +
       '</div>' +
       '<div class="ok-sec">' +
         '<label class="ok-lb">絞り込み</label>' +
