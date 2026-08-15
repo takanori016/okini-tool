@@ -78,68 +78,133 @@
   var gid = findGid();
   var panel = document.createElement('div');
   panel.id = 'ok-panel';
-  panel.style.cssText = 'position:fixed;top:6px;left:6px;right:6px;z-index:2147483647;background:#fff;border:2px solid #e84575;border-radius:12px;font:13px/1.55 -apple-system,sans-serif;color:#1a1a2e;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 8px 28px rgba(0,0,0,.35)';
+  panel.style.cssText = 'position:fixed;top:6px;left:6px;right:6px;z-index:2147483647;background:#fff;border:1px solid #f0aec5;border-radius:10px;font:13px/1.6 -apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN",sans-serif;color:#333;max-height:88vh;overflow:auto;overscroll-behavior:contain;box-shadow:0 8px 28px rgba(0,0,0,.3)';
   panel.innerHTML =
-    '<style>#ok-panel input[type=checkbox]{-webkit-appearance:none;appearance:none;width:20px;height:20px;min-width:20px;border:2px solid #e84575;border-radius:4px;background:#fff;position:relative;vertical-align:middle;margin:0 6px 0 0;flex:none;cursor:pointer}#ok-panel input[type=checkbox]:checked{background:#e84575}#ok-panel input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}#ok-panel input[type=checkbox]:disabled{border-color:#cbd5e1;background:#f1f5f9}#ok-panel input[type=checkbox]:disabled:checked{background:#cbd5e1}</style>' +
-    '<div id="ok-h" style="position:sticky;top:0;background:#e84575;color:#fff;font-weight:700;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:10px 10px 0 0">' +
-      '<span>オキニトーク 一斉送信</span>' +
-      '<span><button id="ok-min" style="border:0;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 9px;margin-right:6px;font-size:14px">＿</button>' +
-      '<button id="ok-x" style="border:0;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 9px;font-size:14px">×</button></span></div>' +
-    '<div id="ok-body" style="padding:12px">' +
-      '<div id="ok-gid" style="font-size:11px;color:#6b7280;margin-bottom:8px"></div>' +
-      '<label style="font-weight:700">テンプレート</label>' +
-      '<div style="display:flex;gap:6px;margin:6px 0">' +
-        '<select id="ok-tpl" style="flex:1;min-width:0;padding:6px;border:1px solid #e5e7eb;border-radius:6px"></select>' +
-        '<button id="ok-tpl-save" type="button" style="padding:6px 10px;border:1px solid #c7d2fe;background:#eef2ff;color:#4338ca;border-radius:6px;font-size:12px;white-space:nowrap">保存</button>' +
-        '<button id="ok-tpl-del" type="button" style="padding:6px 10px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:6px;font-size:12px;white-space:nowrap">削除</button>' +
+    '<style>' +
+    '#ok-panel{--p:#ec5d88;--pl:#f0aec5;--pb:#fdeff4;--ln:#e0dcde;--mu:#8b8388}' +
+    '#ok-panel *{box-sizing:border-box}' +
+    '#ok-panel button,#ok-panel input,#ok-panel select,#ok-panel textarea{font-family:inherit;font-size:13px;color:#333;box-sizing:border-box;margin:0}' +
+    '#ok-panel .ok-hd{position:sticky;top:0;z-index:2;background:linear-gradient(180deg,#f4799f,#e85a89);color:#fff;font-weight:700;font-size:15px;text-align:center;padding:12px;border-radius:9px 9px 0 0}' +
+    '#ok-panel .ok-hd__b{position:absolute;top:8px;right:9px;display:flex;gap:5px}' +
+    '#ok-panel .ok-hd__b button{border:0;background:rgba(255,255,255,.3);color:#fff;border-radius:5px;padding:3px 10px;font-size:14px;line-height:1.3;cursor:pointer}' +
+    '#ok-panel .ok-gid{font-size:12px;color:#c0392b;padding:9px 13px;background:#fdf2f2;border-bottom:1px solid #f6e2e9}' +
+    '#ok-panel .ok-sec{padding:13px;border-bottom:1px solid #f6e2e9}' +
+    '#ok-panel .ok-lb{display:block;font-size:13px;font-weight:700;color:#444;margin-bottom:7px}' +
+    '#ok-panel .ok-lbrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px}' +
+    '#ok-panel .ok-lbrow .ok-lb{margin:0}' +
+    '#ok-panel .ok-btns{display:flex;gap:6px;margin-top:8px}' +
+    '#ok-panel .ok-lbrow .ok-btns{margin:0}' +
+    '#ok-panel .ok-b{border-radius:6px;font-size:12px;font-weight:700;padding:7px 13px;white-space:nowrap;cursor:pointer;line-height:1.4}' +
+    '#ok-panel .ok-b--p{background:var(--p);border:1px solid var(--p);color:#fff}' +
+    '#ok-panel .ok-b--o{background:#fff;border:1px solid var(--pl);color:var(--p)}' +
+    '#ok-panel .ok-b--g{background:#fff;border:1px solid var(--ln);color:#666}' +
+    '#ok-panel .ok-b--d{background:#fff;border:1px solid #f0c3c3;color:#c0392b}' +
+    '#ok-panel .ok-b--w{display:block;width:100%;padding:13px;font-size:15px}' +
+    '#ok-panel .ok-b--sm{padding:4px 10px;font-size:11px;margin-left:8px}' +
+    '#ok-panel .ok-b:disabled{opacity:.45}' +
+    '#ok-panel .ok-in,#ok-panel .ok-sel{padding:8px 9px;border:1px solid var(--ln);border-radius:6px;background:#fff}' +
+    '#ok-panel .ok-sel{max-width:60%}' +
+    '#ok-panel .ok-sel--w,#ok-panel .ok-in--w{width:100%;max-width:none}' +
+    '#ok-panel .ok-sel--s{padding:3px 5px;max-width:none;display:inline}' +
+    '#ok-panel .ok-tb{display:flex;flex-wrap:wrap;gap:6px;background:var(--pb);border:1px solid var(--pl);border-bottom:0;border-radius:6px 6px 0 0;padding:7px 8px}' +
+    '#ok-panel .ok-tb__b{background:#fff;border:1px solid var(--pl);color:var(--p);border-radius:5px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer}' +
+    '#ok-panel .ok-ta{display:block;width:100%;padding:10px;border:1px solid var(--pl);border-radius:0 0 6px 6px;line-height:1.7;resize:vertical}' +
+    '#ok-panel .ok-cnt{text-align:right;font-size:11px;color:var(--mu);margin-top:4px}' +
+    '#ok-panel .ok-note{font-size:11px;line-height:1.65;color:var(--mu);margin-top:6px}' +
+    '#ok-panel .ok-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #f5eff1}' +
+    '#ok-panel .ok-row__l{font-size:13px;color:#444}' +
+    '#ok-panel .ok-ck{display:flex;align-items:flex-start;gap:7px;padding:8px 0;font-size:13px;line-height:1.5;border-bottom:1px solid #f5eff1}' +
+    '#ok-panel .ok-ck:last-of-type{border-bottom:0}' +
+    '#ok-panel .ok-ck--off{color:#aaa}' +
+    '#ok-panel .ok-ck--tight{padding:0;border:0}' +
+    '#ok-panel input[type=checkbox]{-webkit-appearance:none;appearance:none;width:20px;height:20px;min-width:20px;border:2px solid var(--p);border-radius:4px;background:#fff;position:relative;flex:none;cursor:pointer}' +
+    '#ok-panel input[type=checkbox]:checked{background:var(--p)}' +
+    '#ok-panel input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}' +
+    '#ok-panel input[type=checkbox]:disabled{border-color:#d6d0d3;background:#f2eef0}' +
+    '#ok-panel input[type=checkbox]:disabled:checked{background:#d6d0d3}' +
+    '#ok-panel .ok-sum{margin-top:11px;padding:10px;background:var(--pb);border:1px solid #f7dce6;border-radius:6px;font-size:12px}' +
+    '#ok-panel .ok-agef{flex-wrap:wrap;gap:6px 12px;margin-top:11px;padding:9px;background:#faf7f8;border:1px solid #eee6ea;border-radius:6px;font-size:12px}' +
+    '#ok-panel .ok-selrow{display:flex;justify-content:space-between;align-items:center;margin:11px 0 7px;font-size:13px}' +
+    '#ok-panel .ok-muted{font-size:12px;color:var(--mu)}' +
+    '#ok-panel .ok-list{max-height:38vh;overflow:auto;border:1px solid var(--ln);border-radius:6px;margin-top:7px}' +
+    '#ok-panel .ok-li{display:flex;gap:7px;align-items:center;padding:8px 9px;border-bottom:1px solid #f4f1f2;font-size:12px}' +
+    '#ok-panel .ok-li:last-child{border-bottom:0}' +
+    '#ok-panel .ok-li__n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
+    '#ok-panel .ok-li__m{color:var(--mu);white-space:nowrap}' +
+    '#ok-panel .ok-pbar{background:#eee;border-radius:999px;height:8px;overflow:hidden;margin-top:11px}' +
+    '#ok-panel .ok-bar__f{height:8px;width:0;background:var(--p)}' +
+    '#ok-panel .ok-progtx{font-size:12px;margin-top:5px}' +
+    '#ok-panel .ok-res{margin-top:11px;padding:10px;background:var(--pb);border:1px solid var(--pl);border-radius:6px;font-size:12px}' +
+    '#ok-panel .ok-logs{margin-top:8px;border:1px solid var(--ln);border-radius:6px;max-height:42vh;overflow:auto}' +
+    '#ok-panel .ok-foot{padding:11px 13px;font-size:11px;color:var(--mu);display:flex;align-items:center}' +
+    '</style>' +
+    '<div id="ok-h" class="ok-hd">オキニトーク 一斉送信' +
+      '<span class="ok-hd__b"><button id="ok-min" type="button">＿</button>' +
+      '<button id="ok-x" type="button">×</button></span></div>' +
+    '<div id="ok-body">' +
+      '<div id="ok-gid" class="ok-gid" style="display:none"></div>' +
+      '<div class="ok-sec">' +
+        '<div class="ok-lbrow"><label class="ok-lb">テンプレート</label>' +
+          '<span class="ok-btns"><button id="ok-tpl-save" type="button" class="ok-b ok-b--o">保存</button>' +
+          '<button id="ok-tpl-del" type="button" class="ok-b ok-b--d">削除</button></span></div>' +
+        '<select id="ok-tpl" class="ok-sel ok-sel--w"></select>' +
       '</div>' +
-      '<label style="font-weight:700">メッセージ</label>' +
-      '<textarea id="ok-msg" maxlength="500" rows="4" placeholder="送信するメッセージを入力" style="width:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #e5e7eb;border-radius:8px;font:13px sans-serif"></textarea>' +
-      '<div style="text-align:right;font-size:11px;color:#6b7280"><span id="ok-cc">0</span>/500</div>' +
-      '<div style="margin:6px 0 2px"><button id="ok-var-name" type="button" style="padding:7px 12px;border:1px solid #c7d2fe;background:#eef2ff;color:#4338ca;border-radius:999px;font-size:12px;font-weight:700">👤 お客様のお名前を入れる</button></div>' +
-      '<div style="font-size:11px;color:#6b7280;margin-bottom:6px">↑押すと文に <b>{名前}</b> が入ります。送信するときに、お客様ごとのお名前へ自動で変わります（例：「{名前}さん こんばんは」→「たろうさん こんばんは」）</div>' +
-      '<div style="margin:10px 0;padding:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px">' +
-        '<div style="font-weight:700;margin-bottom:6px">絞り込み</div>' +
-        '<label style="display:block;margin:4px 0">送信対象 ' +
-          '<select id="ok-mode" style="width:100%;padding:6px;border:1px solid #e5e7eb;border-radius:6px">' +
-          '<option value="all">全員</option><option value="pin-only">ピン留めのみ</option><option value="pin-exclude">ピン留め以外</option></select></label>' +
-        '<label style="display:block;margin:6px 0">取得人数 ' +
-          '<select id="ok-limit" style="width:100%;padding:6px;border:1px solid #e5e7eb;border-radius:6px">' +
-          '<option value="30">30人</option><option value="50" selected>50人</option><option value="100">100人</option><option value="0">制限なし</option><option value="custom">カスタム</option></select></label>' +
-        '<div id="ok-limit-cw" style="display:none;margin:2px 0 6px"><input id="ok-limit-cv" type="number" min="1" max="9999" placeholder="人数" style="width:110px;padding:6px;border:1px solid #e5e7eb;border-radius:6px"> 人</div>' +
-        '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-rep"> リピーター除外（予約 <select id="ok-repn" style="padding:3px"><option>1</option><option>2</option><option selected>3</option><option>5</option></select>回以上）</label>' +
-        '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-rec"> 最近やり取りした人を除外（<select id="ok-recd" style="padding:3px"><option>1</option><option selected>3</option><option>7</option><option>14</option><option>30</option></select>日以内）</label>' +
-        '<label style="display:block;margin:6px 0;color:#9ca3af"><input type="checkbox" checked disabled> 未読がある人はスキップ（必須）</label>' +
-        '<label style="display:block;margin:6px 0"><input type="checkbox" id="ok-fresh"> 🔄 最初から送り直す（前に送った人にもまた送る）</label>' +
-        '<div style="font-size:11px;color:#6b7280;margin:-2px 0 4px">通常はチェック不要。前回の続きから送れます（送信済みの人は自動で除外）。全員にもう一度送りたい時だけチェック。</div>' +
+      '<div class="ok-sec">' +
+        '<label class="ok-lb">メッセージ</label>' +
+        '<div class="ok-tb"><button id="ok-var-name" type="button" class="ok-tb__b">👤 お客様のお名前を入れる</button></div>' +
+        '<textarea id="ok-msg" class="ok-ta" maxlength="500" rows="5" placeholder="送信するメッセージを入力"></textarea>' +
+        '<div class="ok-cnt"><span id="ok-cc">0</span>/500</div>' +
+        '<div class="ok-note">上のボタンを押すと文に <b>{名前}</b> が入ります。送信するときに、お客様ごとのお名前へ自動で変わります（例：「{名前}さん こんばんは」→「たろうさん こんばんは」）</div>' +
       '</div>' +
-      '<button id="ok-fetch" style="width:100%;padding:12px;font-weight:700;color:#fff;background:#6c5ce7;border:0;border-radius:8px">対象者を取得</button>' +
-      '<div id="ok-sum" style="display:none;margin:10px 0;padding:8px;background:#eef2ff;border-radius:8px;font-size:12px"></div>' +
-      '<div id="ok-listwrap" style="display:none;margin:10px 0">' +
-        '<div id="ok-agef" style="display:none;flex-wrap:wrap;gap:4px 10px;margin-bottom:8px;padding:8px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;font-size:12px"></div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-          '<label><input type="checkbox" id="ok-all" checked> 全選択</label><span id="ok-selc" style="font-size:12px;color:#6b7280"></span></div>' +
-        '<input id="ok-search" placeholder="名前で検索" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #e5e7eb;border-radius:6px;margin-bottom:6px">' +
-        '<div id="ok-list" style="max-height:38vh;overflow:auto;border:1px solid #e5e7eb;border-radius:8px"></div>' +
+      '<div class="ok-sec">' +
+        '<label class="ok-lb">絞り込み</label>' +
+        '<div class="ok-row"><span class="ok-row__l">送信対象</span>' +
+          '<select id="ok-mode" class="ok-sel">' +
+          '<option value="all">全員</option><option value="pin-only">ピン留めのみ</option><option value="pin-exclude">ピン留め以外</option></select></div>' +
+        '<div class="ok-row"><span class="ok-row__l">取得人数</span>' +
+          '<select id="ok-limit" class="ok-sel">' +
+          '<option value="30">30人</option><option value="50" selected>50人</option><option value="100">100人</option><option value="0">制限なし</option><option value="custom">カスタム</option></select></div>' +
+        '<div id="ok-limit-cw" class="ok-row" style="display:none"><span class="ok-row__l">人数を指定</span>' +
+          '<span><input id="ok-limit-cv" type="number" min="1" max="9999" placeholder="人数" class="ok-in" style="width:92px"> 人</span></div>' +
+        '<label class="ok-ck"><input type="checkbox" id="ok-rep"><span>リピーター除外（予約 <select id="ok-repn" class="ok-sel ok-sel--s"><option>1</option><option>2</option><option selected>3</option><option>5</option></select> 回以上）</span></label>' +
+        '<label class="ok-ck"><input type="checkbox" id="ok-rec"><span>最近やり取りした人を除外（<select id="ok-recd" class="ok-sel ok-sel--s"><option>1</option><option selected>3</option><option>7</option><option>14</option><option>30</option></select> 日以内）</span></label>' +
+        '<label class="ok-ck ok-ck--off"><input type="checkbox" checked disabled><span>未読がある人はスキップ（必須）</span></label>' +
+        '<label class="ok-ck"><input type="checkbox" id="ok-fresh"><span>🔄 最初から送り直す（前に送った人にもまた送る）</span></label>' +
+        '<div class="ok-note">通常はチェック不要。前回の続きから送れます（送信済みの人は自動で除外）。全員にもう一度送りたい時だけチェック。</div>' +
       '</div>' +
-      '<button id="ok-send" style="display:none;width:100%;padding:12px;font-weight:700;color:#fff;background:#e84575;border:0;border-radius:8px">送信開始</button>' +
-      '<div id="ok-prog" style="display:none;margin:10px 0">' +
-        '<div style="background:#e5e7eb;border-radius:999px;height:8px;overflow:hidden"><div id="ok-bar" style="height:8px;width:0;background:#10b981"></div></div>' +
-        '<div style="font-size:12px;margin-top:4px"><span id="ok-pc">0</span>/<span id="ok-pt">0</span> <span id="ok-pn"></span></div>' +
-        '<div style="margin-top:6px"><button id="ok-pause" style="padding:6px 12px;border:1px solid #e5e7eb;background:#fff;border-radius:6px;margin-right:6px">一時停止</button>' +
-        '<button id="ok-stop" style="padding:6px 12px;border:0;background:#ef4444;color:#fff;border-radius:6px">中止</button></div>' +
+      '<div class="ok-sec">' +
+        '<button id="ok-fetch" type="button" class="ok-b ok-b--o ok-b--w">対象者を取得</button>' +
+        '<div id="ok-sum" class="ok-sum" style="display:none"></div>' +
+        '<div id="ok-listwrap" style="display:none">' +
+          '<div id="ok-agef" class="ok-agef" style="display:none"></div>' +
+          '<div class="ok-selrow"><label class="ok-ck ok-ck--tight"><input type="checkbox" id="ok-all" checked><span>全選択</span></label>' +
+            '<span id="ok-selc" class="ok-muted"></span></div>' +
+          '<input id="ok-search" class="ok-in ok-in--w" placeholder="名前で検索">' +
+          '<div id="ok-list" class="ok-list"></div>' +
+        '</div>' +
+        '<button id="ok-send" type="button" class="ok-b ok-b--p ok-b--w" style="display:none;margin-top:12px">送信開始</button>' +
+        '<div id="ok-prog" style="display:none">' +
+          '<div class="ok-pbar"><div id="ok-bar" class="ok-bar__f"></div></div>' +
+          '<div class="ok-progtx"><span id="ok-pc">0</span>/<span id="ok-pt">0</span> <span id="ok-pn"></span></div>' +
+          '<div class="ok-btns"><button id="ok-pause" type="button" class="ok-b ok-b--g">一時停止</button>' +
+          '<button id="ok-stop" type="button" class="ok-b ok-b--d">中止</button></div>' +
+        '</div>' +
+        '<div id="ok-res" class="ok-res" style="display:none"></div>' +
       '</div>' +
-      '<div id="ok-res" style="display:none;margin-top:10px;padding:10px;background:#f0fdf4;border:1px solid #10b981;border-radius:8px;font-size:12px"></div>' +
-      '<div style="margin-top:12px"><button id="ok-loghist" type="button" style="width:100%;padding:9px;border:1px solid #e5e7eb;background:#fff;border-radius:8px;font-size:12px">送信履歴を見る</button></div>' +
-      '<div id="ok-loglist" style="display:none;margin-top:8px;border:1px solid #e5e7eb;border-radius:8px;max-height:42vh;overflow:auto"></div>' +
-      '<div style="margin-top:12px;border-top:1px solid #eee;padding-top:8px;font-size:11px;color:#9ca3af">' +
-        '送信済み記録: <span id="ok-sentn">0</span>件 ' +
-        '<button id="ok-clear" style="border:0;background:#fee2e2;color:#b91c1c;border-radius:6px;padding:3px 8px;margin-left:6px">全データ削除</button></div>' +
+      '<div class="ok-sec">' +
+        '<button id="ok-loghist" type="button" class="ok-b ok-b--g ok-b--w">送信履歴を見る</button>' +
+        '<div id="ok-loglist" class="ok-logs" style="display:none"></div>' +
+      '</div>' +
+      '<div class="ok-foot">送信済み記録: <span id="ok-sentn">0</span>件' +
+        '<button id="ok-clear" type="button" class="ok-b ok-b--d ok-b--sm">全データ削除</button></div>' +
     '</div>';
   document.body.appendChild(panel);
 
   function $(id) { return document.getElementById(id); }
-  $('ok-gid').textContent = gid ? ('GID: ' + gid) : 'GIDが取得できません（オキニトーク関連ページで開いてください）';
+  if (!gid) {
+    $('ok-gid').style.display = 'block';
+    $('ok-gid').textContent = 'オキニトーク一覧のページを開いてから、もう一度お試しください';
+  }
   if (!gid) $('ok-fetch').disabled = true;
   function refreshSentN() { $('ok-sentn').textContent = Object.keys(getSent()).length; }
   refreshSentN();
@@ -232,7 +297,7 @@
       return '<div style="border-bottom:1px solid #e5e7eb">' +
         '<div class="ok-logitem" data-i="' + idx + '" style="padding:8px;font-size:12px">' +
           '<div style="color:#6b7280">' + esc(dt) + '</div>' +
-          '<div>' + head + ' <span style="color:#6c5ce7">▼詳細</span></div>' +
+          '<div>' + head + ' <span style="color:#ec5d88">▼詳細</span></div>' +
           '<div style="color:#9ca3af;font-size:11px">「' + esc(l.message || '') + '」</div>' +
         '</div>' +
         '<div class="ok-logdet" data-i="' + idx + '" style="display:none">' + det + '</div></div>';
@@ -415,13 +480,13 @@
   function renderList() {
     var vis = visible();
     $('ok-list').innerHTML = vis.map(function (u) {
-      return '<label style="display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid #f3f4f6;font-size:12px">' +
+      return '<label class="ok-li">' +
         '<input type="checkbox" class="ok-cb" data-id="' + esc(u.memberId) + '"' + (unchecked[u.memberId] ? '' : ' checked') + '>' +
-        '<span style="flex:1">' + esc(u.name) + '</span>' +
-        '<span style="color:#6b7280">' + esc(u.ageRange || '') + '</span>' +
+        '<span class="ok-li__n">' + esc(u.name) + '</span>' +
+        '<span class="ok-li__m">' + esc(u.ageRange || '') + '</span>' +
         '<span>' + (u.isPinned ? '📌' : '') + '</span>' +
-        '<span style="color:#6b7280">' + (u.reserveCount > 0 ? u.reserveCount + '回' : '') + '</span>' +
-        '<span style="color:#9ca3af">' + esc(u.lastTalkDate || '') + '</span></label>';
+        '<span class="ok-li__m">' + (u.reserveCount > 0 ? u.reserveCount + '回' : '') + '</span>' +
+        '<span class="ok-li__m">' + esc(u.lastTalkDate || '') + '</span></label>';
     }).join('');
     Array.prototype.forEach.call($('ok-list').querySelectorAll('.ok-cb'), function (cb) {
       cb.addEventListener('change', function () {
