@@ -3,7 +3,9 @@
   if (window.__okiniTool) { alert('オキニ送信ツールは既に起動しています'); return; }
   window.__okiniTool = true;
 
-  var ORIGIN = 'https://spgirl.cityheaven.net';
+  /* 本番は姫デコ固定。それ以外のホスト（検証用ダミー）では今いるオリジンを使う */
+  var ORIGIN = (location.hostname.indexOf('cityheaven.net') !== -1)
+    ? 'https://spgirl.cityheaven.net' : location.origin;
   var K_SENT = 'okini-sent-users';
   var K_SKIP = 'okini-skipped-users';
   var K_LOGS = 'okini-send-logs';
@@ -51,19 +53,31 @@
   }
 
   /* リダイレクト耐性：毎tick contentDocument を取り直してセレクタ出現を待つ */
-  function loadAndPoll(ifr, url, selector, maxTries) {
+  /* expect: 読み込めたページのURLに必ず含まれるはずの文字列。
+     これを確認しないと、次の相手へ移動した直後にまだ「前の相手のページ」が残っていて、
+     同じ入力欄が見つかってしまう。その結果、前の人に二重送信し、本来の相手には届かない。 */
+  function loadAndPoll(ifr, url, selector, maxTries, expect) {
     return new Promise(function (resolve) {
       var n = 0;
       try { ifr.src = url; } catch (e) {}
       var iv = setInterval(function () {
         n++;
-        var d = null, el = null;
+        var d = null, el = null, right = true;
         try { d = ifr.contentDocument; } catch (e) {}
-        if (d) { try { el = d.querySelector(selector); } catch (e) {} }
-        if (el || n >= maxTries) {
+        if (d && expect) {
+          var href = '';
+          try { href = d.URL || (d.location && d.location.href) || ''; } catch (e) {}
+          right = href.indexOf(expect) !== -1;
+        }
+        if (d && right) { try { el = d.querySelector(selector); } catch (e) {} }
+        if (el) {
           clearInterval(iv);
           var w = null; try { w = ifr.contentWindow; } catch (e) {}
-          resolve({ doc: d, win: w, el: el, timedout: !el });
+          resolve({ doc: d, win: w, el: el, timedout: false });
+        } else if (n >= maxTries) {
+          clearInterval(iv);
+          var w2 = null; try { w2 = ifr.contentWindow; } catch (e) {}
+          resolve({ doc: right ? d : null, win: w2, el: null, timedout: true });
         }
       }, 500);
     });
@@ -136,6 +150,10 @@
     '#ok-panel .ok-bar__f{height:8px;width:0;background:var(--ac)}' +
     '#ok-panel .ok-progtx{font-size:13px;margin-top:6px}' +
     '#ok-panel .ok-res{margin-top:12px;padding:10px;background:var(--pb);border:1px solid var(--pk);border-radius:10px;font-size:13px}' +
+    '#ok-panel .ok-resume{margin-top:12px;padding:12px;background:#fffbe8;border:1px solid #e8c86a;border-radius:10px}' +
+    '#ok-panel .ok-resume__t{font-weight:bold;font-size:14px;line-height:1.6}' +
+    '#ok-panel .ok-resume .ok-btns{margin-top:10px}' +
+    '#ok-panel .ok-resume .ok-b{flex:1}' +
     '#ok-panel .ok-logs{margin-top:8px;border:1px solid var(--inb);border-radius:10px;max-height:42vh;overflow:auto}' +
     '#ok-panel .ok-foot{padding:12px 5%;font-size:12px;color:var(--mu);display:flex;align-items:center}' +
     '</style>' +
@@ -189,6 +207,11 @@
           '<div class="ok-progtx"><span id="ok-pc">0</span>/<span id="ok-pt">0</span> <span id="ok-pn"></span></div>' +
           '<div class="ok-btns"><button id="ok-pause" type="button" class="ok-b ok-b--g">一時停止</button>' +
           '<button id="ok-stop" type="button" class="ok-b ok-b--d">中止</button></div>' +
+        '</div>' +
+        '<div id="ok-resume" class="ok-resume" style="display:none">' +
+          '<div id="ok-resume-t" class="ok-resume__t"></div>' +
+          '<div class="ok-btns"><button id="ok-resume-go" type="button" class="ok-b ok-b--p">続きから送る</button>' +
+          '<button id="ok-resume-stop" type="button" class="ok-b ok-b--g">やめる</button></div>' +
         '</div>' +
         '<div id="ok-res" class="ok-res" style="display:none"></div>' +
       '</div>' +
@@ -440,7 +463,8 @@
         page++;
         btn.textContent = '取得中... ' + page + '/' + totalPages + 'ページ（' + acc.targets.length + '人）';
         var url = base + '&current_page=' + (page - 1) + '&pager=1&search=';
-        var rn = await loadAndPoll(ifr, url, '.counter, li.list[data-memberid]', 40);
+        /* 2ページ目以降も、前のページが残ったまま読んでしまわないようURLで確認する */
+        var rn = await loadAndPoll(ifr, url, '.counter, li.list[data-memberid]', 40, 'current_page=' + (page - 1));
         await rnd(1200, 2200);
         if (rn.doc) filterPage(parseUsers(rn.doc), opts, sent, skip, now, acc);
       }
@@ -509,17 +533,57 @@
   });
 
   /* ---------- 送信 ---------- */
+  var autoPaused = false;
   $('ok-pause').onclick = function () {
     sendState.paused = !sendState.paused;
+    autoPaused = false;
+    $('ok-resume').style.display = 'none';
     $('ok-pause').textContent = sendState.paused ? '再開' : '一時停止';
+  };
+
+  /* 画面が見えなくなったら自動で一時停止する。
+     ブラウザは画面が隠れると裏の処理を止めてしまうため、勝手に中途半端に進んだり
+     忘れた頃に再開したりするのを防ぎ、「止まった」ことを本人に見せる。
+     小窓（PiP）は「見えている」扱いなので、この処理は走らず送信が続く。 */
+  document.addEventListener('visibilitychange', function () {
+    if (!sendState.running) return;
+    if (document.hidden) {
+      if (!sendState.paused) {
+        sendState.paused = true;
+        autoPaused = true;
+        $('ok-pause').textContent = '再開';
+      }
+    } else if (autoPaused) {
+      $('ok-resume-t').textContent =
+        '⏸ ' + (sendState.done || 0) + '人まで送って止まっています。続きから送りますか？';
+      $('ok-resume').style.display = 'block';
+    }
+  });
+
+  $('ok-resume-go').onclick = function () {
+    $('ok-resume').style.display = 'none';
+    autoPaused = false;
+    sendState.paused = false;
+    $('ok-pause').textContent = '一時停止';
+  };
+  $('ok-resume-stop').onclick = function () {
+    $('ok-resume').style.display = 'none';
+    autoPaused = false;
+    sendState.paused = false;
+    sendState.running = false;
   };
   $('ok-stop').onclick = function () { if (confirm('送信を中止しますか？')) sendState.running = false; };
 
   async function sendOne(u, msg) {
-    var url = ORIGIN + '/okinitalk/talk?mid=' + encodeURIComponent(u.memberId) + '&gid=' + gid;
-    var r = await loadAndPoll(ifr, url, 'textarea#te_box, div.talk_block.tbactive, div.talk_editor.deactive', 48);
+    var mid = encodeURIComponent(u.memberId);
+    var url = ORIGIN + '/okinitalk/talk?mid=' + mid + '&gid=' + gid;
+    var r = await loadAndPoll(ifr, url, 'textarea#te_box, div.talk_block.tbactive, div.talk_editor.deactive', 48, 'mid=' + mid);
     var d = r.doc, w = r.win;
     if (!d) return 'fail';
+    /* 念のため、開いているのが本当にこの相手のページか最終確認する */
+    var cur = '';
+    try { cur = d.URL || (d.location && d.location.href) || ''; } catch (e) {}
+    if (cur.indexOf('mid=' + mid) === -1) return 'fail';
     if (d.querySelector('div.talk_block.tbactive')) return 'blocked';
     var ta = d.querySelector('textarea#te_box');
     if (!ta) return 'fail';
@@ -565,7 +629,7 @@
     var excluded = allTargets.filter(function (u) { return unchecked[u.memberId]; }).map(function (u) { return u.memberId; });
     if (excluded.length) setSkipped(excluded);
 
-    sendState = { running: true, paused: false };
+    sendState = { running: true, paused: false, done: 0 };
     try { if (window.OkiniApp && OkiniApp.setSending) OkiniApp.setSending(true); } catch (e) {}
     $('ok-send').style.display = 'none';
     $('ok-fetch').disabled = true;
@@ -588,12 +652,14 @@
       else if (st === 'unknown') { unknown++; }
       else fail++;
       details.push({ name: u.name, memberId: u.memberId, status: st, time: new Date().toLocaleTimeString('ja-JP') });
+      sendState.done = i + 1;
       if (i < targets.length - 1 && sendState.running) {
         if (Math.random() < 0.1) await rnd(3000, 5000); else await rnd(1000, 3000);
       }
     }
 
     sendState.running = false;
+    $('ok-resume').style.display = 'none';
     /* 送信後にソフトキーボードが出っぱなしになるのを防ぐ（trで入力欄にfocusするため） */
     try { if (window.OkiniApp && OkiniApp.setSending) OkiniApp.setSending(false); } catch (e) {}
     try { var _a = ifr.contentDocument && ifr.contentDocument.activeElement; if (_a && _a.blur) _a.blur(); } catch (e) {}
