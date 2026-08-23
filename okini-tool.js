@@ -534,11 +534,15 @@
 
   /* ---------- 送信 ---------- */
   var autoPaused = false;
+  function notifyPaused(p) {
+    try { if (window.OkiniApp && OkiniApp.setPaused) OkiniApp.setPaused(!!p); } catch (e) {}
+  }
   $('ok-pause').onclick = function () {
     sendState.paused = !sendState.paused;
     autoPaused = false;
     $('ok-resume').style.display = 'none';
     $('ok-pause').textContent = sendState.paused ? '再開' : '一時停止';
+    notifyPaused(sendState.paused);
   };
 
   /* 画面が見えなくなったら自動で一時停止する。
@@ -552,6 +556,7 @@
         sendState.paused = true;
         autoPaused = true;
         $('ok-pause').textContent = '再開';
+        notifyPaused(true);
       }
     } else if (autoPaused) {
       $('ok-resume-t').textContent =
@@ -565,6 +570,7 @@
     autoPaused = false;
     sendState.paused = false;
     $('ok-pause').textContent = '一時停止';
+    notifyPaused(false);
   };
   $('ok-resume-stop').onclick = function () {
     $('ok-resume').style.display = 'none';
@@ -644,6 +650,8 @@
       $('ok-pc').textContent = i + 1;
       $('ok-bar').style.width = ((i + 1) / targets.length * 100) + '%';
       $('ok-pn').textContent = '送信中: ' + u.name;
+      /* アプリ側（小窓の進捗表示）にも知らせる。ブックマークレットでは何も起きない */
+      try { if (window.OkiniApp && OkiniApp.setProgress) OkiniApp.setProgress(i, targets.length, u.name); } catch (e) {}
       var st = 'fail';
       try { st = await sendOne(u, applyVars(template, u)); } catch (e) { st = 'fail'; }
       if (st === 'success' || st === 'unknown') { markSent(u.memberId); refreshSentN(); }
@@ -653,6 +661,7 @@
       else fail++;
       details.push({ name: u.name, memberId: u.memberId, status: st, time: new Date().toLocaleTimeString('ja-JP') });
       sendState.done = i + 1;
+      try { if (window.OkiniApp && OkiniApp.setProgress) OkiniApp.setProgress(i + 1, targets.length, u.name); } catch (e) {}
       if (i < targets.length - 1 && sendState.running) {
         if (Math.random() < 0.1) await rnd(3000, 5000); else await rnd(1000, 3000);
       }
