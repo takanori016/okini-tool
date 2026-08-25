@@ -449,24 +449,86 @@
       var acc = { targets: [], su: 0, sr: 0, srec: 0, ss: 0, sk: 0 };
       var base = ORIGIN + '/J2OkiniTalkUserList.php?gid=' + gid;
 
-      btn.textContent = '取得中... 1ページ目';
-      var r1 = await loadAndPoll(ifr, base, '.counter, li.list[data-memberid]', 40);
-      if (!r1.doc) { alert('一覧ページの読み込みに失敗しました'); return; }
-      var total = readTotal(r1.doc);
-      var totalPages = total ? Math.ceil(total / 30) : 1;
-      filterPage(parseUsers(r1.doc), opts, sent, skip, now, acc);
+      var SEL = '.counter, li.list[data-memberid]';
+      var MAX_PAGES = 100;              /* 暴走防止（30人×100頁＝3000人） */
+      var seen = {};                    /* 同じ人を二重に数えない */
+      var totalSeen = 0;                /* 一覧で実際に見つけた人数（除外する前） */
+      var pagesNg = 0;                  /* 読み込めなかったページ数 */
 
-      var page = 1;
-      while (page < totalPages) {
+      function take(users) {
+        var fresh = [];
+        for (var i = 0; i < users.length; i++) {
+          var u = users[i];
+          if (!u.memberId || seen[u.memberId]) continue;
+          seen[u.memberId] = 1;
+          fresh.push(u);
+        }
+        totalSeen += fresh.length;
+        return fresh;
+      }
+
+      /* 1ページ分を取る。読み込めなければ1回だけ間をおいて再試行する。
+         ok=false は「読み込めなかった」、ok=true で fresh が空なら「もう新しい人がいない」。 */
+      async function fetchPage(pageNo) {
+        var url = base + '&current_page=' + (pageNo - 1) + '&pager=1&search=';
+        var sawList = false;
+        for (var t = 0; t < 2; t++) {
+          if (t) await rnd(1500, 2500);
+          /* 前のページが残ったまま読んでしまわないようURLで確認する */
+          var r = await loadAndPoll(ifr, url, SEL, 40, 'current_page=' + (pageNo - 1));
+          await rnd(1200, 2200);
+          if (!r.doc) continue;
+          /* エラーページと「本当に最後のページ」を取り違えないよう、
+             一覧ページとして成立しているか（件数表示か行がある）を確かめる */
+          var isList = !!(r.doc.querySelector('.counter') ||
+                          r.doc.querySelector('li.list[data-memberid]'));
+          if (!isList) continue;
+          sawList = true;
+          var fresh = take(parseUsers(r.doc));
+          if (fresh.length) return { ok: true, fresh: fresh };
+        }
+        return { ok: sawList, fresh: [] };
+      }
+
+      /* 前回の内容が残っていると1ページ目を読み違えるので、いったん空にする */
+      try { ifr.src = 'about:blank'; } catch (e) {}
+      await rnd(400, 700);
+
+      btn.textContent = '取得中... 1ページ目';
+      var r1 = await loadAndPoll(ifr, base, SEL, 40);
+      if (!r1.doc) { alert('一覧ページの読み込みに失敗しました'); return; }
+      var total = readTotal(r1.doc);          /* 一覧の「全◯人」。読めないこともある */
+      filterPage(take(parseUsers(r1.doc)), opts, sent, skip, now, acc);
+
+      /* 総数が読めなくても、新しい人が出てこなくなるまでページを進める。
+         以前は総数が読めないと1ページ（30人）で打ち切っていた。 */
+      var page = 1, consecNg = 0;
+      while (page < MAX_PAGES) {
         if (opts.limit > 0 && acc.targets.length >= opts.limit) break;
+        if (total && totalSeen >= total) break;
         await rnd(2500, 5000);
         page++;
-        btn.textContent = '取得中... ' + page + '/' + totalPages + 'ページ（' + acc.targets.length + '人）';
-        var url = base + '&current_page=' + (page - 1) + '&pager=1&search=';
-        /* 2ページ目以降も、前のページが残ったまま読んでしまわないようURLで確認する */
-        var rn = await loadAndPoll(ifr, url, '.counter, li.list[data-memberid]', 40, 'current_page=' + (page - 1));
-        await rnd(1200, 2200);
-        if (rn.doc) filterPage(parseUsers(rn.doc), opts, sent, skip, now, acc);
+        btn.textContent = '取得中... ' + page + 'ページ目（' + totalSeen +
+          (total ? '/' + total : '') + '人）';
+        var rn = await fetchPage(page);
+        if (!rn.ok) {
+          pagesNg++; consecNg++;
+          if (consecNg >= 3) break;   /* 3回続けて失敗したら諦める */
+          continue;                   /* 1ページ失敗しても残りは取りに行く */
+        }
+        if (!rn.fresh.length) {
+          /* まだ残っているはずなのに空だった場合は、失敗とみなして次のページへ進む。
+             1ページ落ちただけで残り全員を取りこぼさないようにするため。
+             ただし空が続いたら（＝もう本当に無い）打ち切る。 */
+          if (total && totalSeen < total) {
+            pagesNg++; consecNg++;
+            if (consecNg >= 3) break;
+            continue;
+          }
+          break;                      /* 新しい人が出てこない＝最後まで来た */
+        }
+        consecNg = 0;                 /* 実際に人が取れたときだけ数え直す */
+        filterPage(rn.fresh, opts, sent, skip, now, acc);
       }
 
       allTargets = (opts.limit > 0) ? acc.targets.slice(0, opts.limit) : acc.targets;
@@ -474,8 +536,18 @@
       buildAgeFilter();
 
       $('ok-sum').style.display = 'block';
-      $('ok-sum').innerHTML = '送信対象 <b>' + allTargets.length + '</b>人　/　除外: ' +
-        acc.su + '(未読) ' + acc.sr + '(リピーター) ' + acc.srec + '(最近) ' + acc.ss + '(送信済み) ' + acc.sk + '(スキップ)';
+      var sum = '送信対象 <b>' + allTargets.length + '</b>人　/　一覧から <b>' + totalSeen + '</b>人を確認' +
+        (total ? '（一覧の表示: 全' + total + '人）' : '') +
+        '<br>除外: ' + acc.su + '(未読) ' + acc.sr + '(リピーター) ' + acc.srec + '(最近) ' +
+        acc.ss + '(送信済み) ' + acc.sk + '(スキップ)';
+      if (pagesNg > 0) {
+        sum += '<br><b style="color:#c0392b">' + pagesNg +
+          'ページ分が読み込めませんでした。もう一度「対象者を取得」を押すと、そろうことがあります。</b>';
+      } else if (total && totalSeen < total) {
+        sum += '<br><b style="color:#b45309">一覧には全' + total + '人と出ていますが、' + totalSeen +
+          '人までしか取得できませんでした。</b>';
+      }
+      $('ok-sum').innerHTML = sum;
       renderList();
       $('ok-listwrap').style.display = 'block';
       $('ok-send').style.display = 'block';
