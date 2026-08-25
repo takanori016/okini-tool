@@ -454,6 +454,7 @@
       var seen = {};                    /* 同じ人を二重に数えない */
       var totalSeen = 0;                /* 一覧で実際に見つけた人数（除外する前） */
       var pagesNg = 0;                  /* 読み込めなかったページ数 */
+      var endedEarly = false;           /* 一覧が「全◯人」より手前で尽きた */
 
       function take(users) {
         var fresh = [];
@@ -521,7 +522,8 @@
              1ページ落ちただけで残り全員を取りこぼさないようにするため。
              ただし空が続いたら（＝もう本当に無い）打ち切る。 */
           if (total && totalSeen < total) {
-            pagesNg++; consecNg++;
+            endedEarly = true;        /* 開けたが人がいない＝一覧がここで尽きている */
+            consecNg++;
             if (consecNg >= 3) break;
             continue;
           }
@@ -543,9 +545,10 @@
       if (pagesNg > 0) {
         sum += '<br><b style="color:#c0392b">' + pagesNg +
           'ページ分が読み込めませんでした。もう一度「対象者を取得」を押すと、そろうことがあります。</b>';
-      } else if (total && totalSeen < total) {
-        sum += '<br><b style="color:#b45309">一覧には全' + total + '人と出ていますが、' + totalSeen +
-          '人までしか取得できませんでした。</b>';
+      }
+      if (total && totalSeen < total) {
+        sum += '<br><b style="color:#b45309">一覧には全' + total + '人と出ていますが、たどれたのは ' +
+          totalSeen + '人まででした' + (endedEarly ? '（一覧がここで終わっていました）' : '') + '。</b>';
       }
       $('ok-sum').innerHTML = sum;
       renderList();
